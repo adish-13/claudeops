@@ -45,7 +45,11 @@ test-web: web/node_modules
 
 lint: lint-go lint-web
 
-lint-go:
+# NOTE: lint-go depends on `web` because `go vet` triggers compilation of
+# internal/server/spa.go, which has //go:embed all:dist — that pattern fails
+# unless internal/server/dist has at least one file. Building the frontend
+# first guarantees that.
+lint-go: web
 	@out=$$(gofmt -l . 2>&1); \
 	if [ -n "$$out" ]; then echo "gofmt issues:"; echo "$$out"; exit 1; fi
 	go vet ./...
@@ -53,7 +57,8 @@ lint-go:
 lint-web: web/node_modules
 	cd web && npx tsc -b --noEmit
 
-vet:
+# Same reason as lint-go: vet alone needs dist to exist for the embed.
+vet: web
 	go vet ./...
 
 fmt:

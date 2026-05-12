@@ -1,4 +1,7 @@
-claudeops
+# Root binary only — anchored so `cmd/claudeops/` (the package directory)
+# is NOT ignored. Without the leading slash this pattern was silently
+# excluding cmd/claudeops/ from the repo entirely.
+/claudeops
 *.db
 *.db-wal
 *.db-shm
