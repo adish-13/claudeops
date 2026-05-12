@@ -55,8 +55,8 @@ type Message struct {
 
 // DiffStat is a per-file or aggregated diff summary.
 type DiffStat struct {
-	Path      string
-	Status    string // "M", "A", "D", "R", "??", etc.
-	Added     int
-	Removed   int
+	Path    string `json:"path"`
+	Status  string `json:"status"` // "M", "A", "D", "R", "??", etc.
+	Added   int    `json:"added"`
+	Removed int    `json:"removed"`
 }
