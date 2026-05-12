@@ -2,3 +2,9 @@ claudeops
 *.db
 *.db-wal
 *.db-shm
+
+# Built frontend assets — produced by `make web`, embedded by Go at build time.
+internal/server/dist/
+
+# Node toolchain — installed via `npm install` in web/.
+web/node_modules/

@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,37 +13,11 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // localhost only
 }
 
-func (srv *Server) handleTerminalStart(w http.ResponseWriter, r *http.Request) {
-	slug := r.PathValue("slug")
-	wsslug := r.PathValue("wsslug")
-	ws, _, err := srv.store.GetWorkspaceBySlug(r.Context(), slug, wsslug)
-	if err != nil {
-		http.Error(w, "workspace not found", 404)
-		return
-	}
-	if _, err := srv.terminals.Spawn(ws.ID, ws.WorktreePath); err != nil {
-		http.Error(w, "spawn failed: "+err.Error(), 500)
-		return
-	}
-	http.Redirect(w, r, fmt.Sprintf("/epics/%s/workspaces/%s", slug, wsslug), http.StatusSeeOther)
-}
-
-func (srv *Server) handleTerminalKill(w http.ResponseWriter, r *http.Request) {
-	slug := r.PathValue("slug")
-	wsslug := r.PathValue("wsslug")
-	ws, _, err := srv.store.GetWorkspaceBySlug(r.Context(), slug, wsslug)
-	if err != nil {
-		http.Error(w, "workspace not found", 404)
-		return
-	}
-	srv.terminals.Kill(ws.ID)
-	http.Redirect(w, r, fmt.Sprintf("/epics/%s/workspaces/%s", slug, wsslug), http.StatusSeeOther)
-}
-
-// handleTerminalWS upgrades to WS and bridges the workspace's pty session.
-// Protocol (text frames):
-//   - server → client: raw bytes from pty
-//   - client → server: either {"type":"input","data":"..."} or {"type":"resize","rows":N,"cols":M}
+// handleTerminalWS bridges the workspace's pty to the browser via xterm.js.
+//
+// Frame protocol (text frames from client):
+//   {"type":"input","data":"..."} or {"type":"resize","rows":N,"cols":M}
+// Server → client: raw byte chunks from the pty.
 func (srv *Server) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	wsidStr := r.PathValue("wsid")
 	wsid, err := strconv.ParseInt(wsidStr, 10, 64)
@@ -64,18 +37,15 @@ func (srv *Server) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Replay backlog so the client sees recent context immediately.
 	if backlog := sess.Backlog(); len(backlog) > 0 {
 		if err := conn.WriteMessage(websocket.BinaryMessage, backlog); err != nil {
 			return
 		}
 	}
 
-	// Subscribe to subsequent output.
 	out, cancel := sess.Subscribe(64)
 	defer cancel()
 
-	// Goroutine: pump pty → ws.
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -86,7 +56,6 @@ func (srv *Server) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// Main loop: ws → pty.
 	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
@@ -95,8 +64,6 @@ func (srv *Server) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 		if len(raw) == 0 {
 			continue
 		}
-		// Try to interpret as JSON control frame; if it parses with type field, route it.
-		// Otherwise treat as raw input bytes.
 		if raw[0] == '{' {
 			var ctrl struct {
 				Type string `json:"type"`

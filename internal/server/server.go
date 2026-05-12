@@ -1,9 +1,14 @@
-// Package server is the HTTP layer: routing, template rendering, and the
-// WebSocket bridge to embedded terminals. Handlers are methods on *Server,
-// split across handlers_*.go files by resource.
+// Package server is the HTTP layer.
+//
+// Responsibilities:
+//   - JSON API under /api/* (handlers split by resource into api_*.go files)
+//   - WebSocket terminal under /ws/terminal/{wsid}
+//   - Static SPA assets served from web/dist (embedded), with index.html
+//     returned for any unknown path so client-side routing works.
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,59 +22,61 @@ type Server struct {
 	terminals    *terminals.Manager
 	home         string
 	worktreeRoot string
-
-	tmpl *templateCache
 }
 
-func New(s *store.Store, tm *terminals.Manager, worktreeRoot string) (*Server, error) {
+func New(s *store.Store, tm *terminals.Manager, worktreeRoot string) *Server {
 	home, _ := os.UserHomeDir()
 	if worktreeRoot == "" {
 		worktreeRoot = filepath.Join(home, "worktrees")
 	}
-	srv := &Server{
-		store:        s,
-		terminals:    tm,
-		home:         home,
-		worktreeRoot: worktreeRoot,
-		tmpl:         newTemplateCache(),
-	}
-	// Validate templates upfront.
-	for _, p := range allPages {
-		if _, err := srv.tmpl.get(p); err != nil {
-			return nil, err
-		}
-	}
-	return srv, nil
+	return &Server{store: s, terminals: tm, home: home, worktreeRoot: worktreeRoot}
 }
 
 func (srv *Server) ListenAndServe(addr string) error {
 	mux := http.NewServeMux()
 
-	// Pages
-	mux.HandleFunc("GET /{$}", srv.handleHome)
-	mux.HandleFunc("GET /sessions", srv.handleSessionsIndex)
-	mux.HandleFunc("GET /sessions/{id}", srv.handleSessionTranscript)
-	mux.HandleFunc("GET /debug", srv.handleDebug)
+	// JSON API
+	mux.HandleFunc("GET /api/sidebar", srv.apiSidebar)
+	mux.HandleFunc("GET /api/home", srv.apiHome)
+	mux.HandleFunc("GET /api/sessions", srv.apiSessionsList)
+	mux.HandleFunc("GET /api/sessions/{id}", srv.apiSessionGet)
+	mux.HandleFunc("GET /api/debug", srv.apiDebug)
 
-	// Epic CRUD
-	mux.HandleFunc("GET /epics/new", srv.handleNewEpicForm)
-	mux.HandleFunc("POST /epics", srv.handleCreateEpic)
-	mux.HandleFunc("GET /epics/{slug}", srv.handleEpic)
-	mux.HandleFunc("POST /epics/{slug}/context", srv.handleSaveContext)
-	mux.HandleFunc("POST /epics/{slug}/archive", srv.handleArchiveEpic)
+	mux.HandleFunc("POST /api/epics", srv.apiCreateEpic)
+	mux.HandleFunc("GET /api/epics/{slug}", srv.apiGetEpic)
+	mux.HandleFunc("POST /api/epics/{slug}/context", srv.apiSaveContext)
+	mux.HandleFunc("POST /api/epics/{slug}/archive", srv.apiArchiveEpic)
 
-	// Workspaces under an epic
-	mux.HandleFunc("GET /epics/{slug}/workspaces/new", srv.handleNewWorkspaceForm)
-	mux.HandleFunc("POST /epics/{slug}/workspaces", srv.handleCreateWorkspace)
-	mux.HandleFunc("GET /epics/{slug}/workspaces/{wsslug}", srv.handleWorkspace)
-	mux.HandleFunc("POST /epics/{slug}/workspaces/{wsslug}/launch", srv.handleLaunchExternal)
-	mux.HandleFunc("POST /epics/{slug}/workspaces/{wsslug}/pr", srv.handleSavePR)
-	mux.HandleFunc("POST /epics/{slug}/workspaces/{wsslug}/archive", srv.handleArchiveWorkspace)
-	mux.HandleFunc("POST /epics/{slug}/workspaces/{wsslug}/term/start", srv.handleTerminalStart)
-	mux.HandleFunc("POST /epics/{slug}/workspaces/{wsslug}/term/kill", srv.handleTerminalKill)
+	mux.HandleFunc("GET /api/epics/{slug}/workspaces/suggest", srv.apiSuggestWorkspace)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces", srv.apiCreateWorkspace)
+	mux.HandleFunc("GET /api/epics/{slug}/workspaces/{wsslug}", srv.apiGetWorkspace)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/launch", srv.apiLaunchITerm)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/pr", srv.apiSavePR)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/archive", srv.apiArchiveWorkspace)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/term/start", srv.apiTermStart)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/term/kill", srv.apiTermKill)
 
-	// WebSocket terminal stream
+	// WebSocket
 	mux.HandleFunc("/ws/terminal/{wsid}", srv.handleTerminalWS)
 
+	// SPA — must be last; matches everything else.
+	mux.Handle("/", srv.spaHandler())
+
 	return http.ListenAndServe(addr, mux)
+}
+
+// ---------- JSON helpers ----------
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeErr(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+func decodeJSON(r *http.Request, v any) error {
+	return json.NewDecoder(r.Body).Decode(v)
 }

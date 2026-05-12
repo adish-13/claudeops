@@ -1,38 +1,61 @@
 # claudeops
 
-Local dashboard for all your Claude Code sessions across every project.
+Local dashboard for managing many Claude Code sessions: epics → workspaces (worktrees) → sessions.
+React + Vite + Tailwind frontend, Go backend, embedded xterm.js terminal per workspace.
 
-P0 MVP: read-only crawler over `~/.claude/projects/*/*.jsonl` →
-SQLite index → web dashboard at http://127.0.0.1:7777.
-
-## Run
+## Build
 
 ```sh
-go build -o claudeops ./cmd/claudeops
-./claudeops
+make build      # frontend (vite) + backend (go) → ./claudeops
+./claudeops     # listens on http://127.0.0.1:7777
 ```
 
-Flags:
+Requires Go 1.22+ and Node 18+.
 
-- `-projects` — path to projects dir (default `~/.claude/projects`)
-- `-db` — sqlite db path (default `~/.claude/claudeops.db`)
-- `-addr` — http listen address (default `127.0.0.1:7777`)
-- `-scan` — rescan interval (default `5s`)
+## Dev mode (hot-reload frontend)
 
-## What it shows
+```sh
+./claudeops &                # backend on :7777
+cd web && npm run dev        # vite on :5173 with HMR + API proxy
+```
 
-| Column | Source |
-|---|---|
-| When | `last_activity` (max of file mtime + parsed timestamps) |
-| Project | `cwd` from session events, falls back to project dir name |
-| Branch | `gitBranch` from session events |
-| Last messages | last `user` and `assistant` text content from the tail |
-| Events | line count |
-| Session | first 8 chars of session UUID |
+Open http://localhost:5173 — API and WebSocket calls are proxied to the Go server.
 
-## What's next (not in MVP)
+## Layout
 
-- Hook-based status (running / idle / needs-input)
-- Per-session detail page
-- `claudeops new <task>` worktree spawn
-- Diff view + PR button
+```
+cmd/claudeops/             — main()
+internal/
+  domain/                  — pure types (Epic, Workspace, Session, Message, DiffStat)
+  store/                   — SQLite (epics.go, workspaces.go, sessions.go)
+  git/                     — git diff stats + per-file list
+  transcript/              — JSONL → message stream
+  terminals/               — pty lifecycle + multiplexer + ring buffer
+  indexer/                 — crawls ~/.claude/projects/*/*.jsonl every 5s
+  worktree/                — wraps git worktree add
+  launcher/                — osascript → iTerm/Terminal
+  server/                  — JSON API (api_*.go), WS terminal, embedded SPA
+web/                       — React + Vite + TypeScript + Tailwind
+  src/components/          — ui.tsx (Button/Card/Pill/...), Sidebar, Layout, Terminal
+  src/pages/               — Home, Epic, Workspace, Sessions, Transcript, Debug, NewEpic, NewWorkspace
+  src/lib/                 — api.ts (typed client), utils.ts
+```
+
+## Routes
+
+JSON API:
+- `GET /api/sidebar` — epics + workspaces with diff stats and session counts
+- `GET /api/home` — totals
+- `GET /api/sessions` and `/api/sessions/{id}` — list + transcript
+- `POST /api/epics` and `GET /api/epics/{slug}` — create/get epic
+- `POST /api/epics/{slug}/context` and `/archive`
+- `GET /api/epics/{slug}/workspaces/suggest` — auto-fills branch + path
+- `POST /api/epics/{slug}/workspaces` and `GET .../workspaces/{wsslug}`
+- `POST .../launch` (iTerm), `.../term/start`, `.../term/kill`, `.../pr`, `.../archive`
+- `GET /api/debug` — DB inspector
+
+WebSocket: `/ws/terminal/{wsid}` — bridges xterm.js ↔ pty.
+
+## Mac app (planned)
+
+Wrap the React app + Go server in Tauri to ship a real `.app`. ~200 LOC of Tauri config; the Go backend stays the same.

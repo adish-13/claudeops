@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -21,37 +22,15 @@ func (srv *Server) expandHome(p string) string {
 	return p
 }
 
-// shortPath shortens an absolute path by collapsing $HOME to "~".
+// shortPath collapses $HOME prefix to "~".
 func (srv *Server) shortPath(p string) string {
+	if p == "" {
+		return p
+	}
 	if srv.home != "" && strings.HasPrefix(p, srv.home) {
 		return "~" + p[len(srv.home):]
 	}
 	return p
-}
-
-func short(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n]
-}
-
-func humanAgo(d time.Duration) string {
-	if d < 0 {
-		d = 0
-	}
-	switch {
-	case d < time.Minute:
-		return fmt.Sprintf("%ds ago", int(d.Seconds()))
-	case d < time.Hour:
-		return fmt.Sprintf("%dm ago", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh ago", int(d.Hours()))
-	case d < 30*24*time.Hour:
-		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
-	default:
-		return fmt.Sprintf("%dmo ago", int(d.Hours()/(24*30)))
-	}
 }
 
 func slugify(s string) string {
@@ -72,3 +51,34 @@ func slugify(s string) string {
 	}
 	return strings.Trim(b.String(), "-")
 }
+
+// workspaceLookup is used by the sessions list to enrich each row with a link
+// to its parent workspace, if any.
+type wsLookup struct {
+	epicSlug, epicName, workspaceSlug, workspaceName string
+}
+
+func (srv *Server) workspaceLookup(ctx context.Context) map[int64]wsLookup {
+	out := map[int64]wsLookup{}
+	epics, err := srv.store.ListEpics(ctx)
+	if err != nil {
+		return out
+	}
+	for _, e := range epics {
+		ws, err := srv.store.ListWorkspacesByEpic(ctx, e.ID)
+		if err != nil {
+			continue
+		}
+		for _, w := range ws {
+			out[w.ID] = wsLookup{
+				epicSlug: e.Slug, epicName: e.Name,
+				workspaceSlug: w.Slug, workspaceName: w.Name,
+			}
+		}
+	}
+	return out
+}
+
+// avoid unused import lint when fmt/time become unreferenced in narrow builds
+var _ = fmt.Sprintf
+var _ = time.Now
