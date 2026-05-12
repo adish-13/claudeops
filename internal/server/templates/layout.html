@@ -1,0 +1,149 @@
+{{ define "layout" }}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }} — claudeops</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel2: #11161d;
+    --border: #30363d;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --warm: #f0883e;
+    --ok: #3fb950;
+    --err: #f85149;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: 100vh;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  button, input[type=submit] {
+    background: var(--accent); color: white; border: 0; border-radius: 5px;
+    padding: 6px 12px; font: inherit; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+  button.danger { background: var(--err); }
+  input[type=text], input[type=url], textarea, select {
+    background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 6px 8px; font: inherit; width: 100%;
+  }
+  textarea { font-family: ui-monospace, SFMono-Regular, monospace; min-height: 200px; }
+  label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 12px; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* sidebar */
+  aside {
+    border-right: 1px solid var(--border);
+    background: var(--panel2);
+    overflow-y: auto;
+    padding: 12px 8px;
+  }
+  aside h1 { font-size: 13px; font-weight: 600; margin: 4px 8px 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .epic-group { margin-bottom: 14px; }
+  .epic-name {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; border-radius: 5px; font-weight: 600;
+    color: var(--fg);
+  }
+  .epic-name:hover { background: var(--panel); text-decoration: none; }
+  .epic-name.active { background: var(--panel); color: var(--accent); }
+  .ws-list { margin: 4px 0 0 10px; padding-left: 12px; border-left: 1px solid var(--border); }
+  .ws-item {
+    display: block; padding: 5px 8px; border-radius: 4px;
+    color: var(--fg); font-size: 12px;
+  }
+  .ws-item:hover { background: var(--panel); text-decoration: none; }
+  .ws-item.active { background: var(--panel); color: var(--accent); }
+  .ws-item .branch { color: var(--warm); font-family: ui-monospace, monospace; font-size: 11px; }
+  .ws-item .meta { color: var(--muted); font-size: 11px; }
+  .add-link {
+    display: block; padding: 5px 8px; color: var(--muted);
+    font-size: 12px; border-radius: 4px;
+  }
+  .add-link:hover { color: var(--accent); background: var(--panel); text-decoration: none; }
+  aside footer { margin-top: 24px; padding: 8px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+
+  /* main */
+  main { overflow-y: auto; padding: 24px 32px; }
+  main header { margin-bottom: 20px; }
+  main h2 { margin: 0; font-size: 18px; }
+  main .crumb { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+
+  /* table */
+  table.list { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.list th, table.list td {
+    padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top;
+  }
+  table.list th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.list tr:hover td { background: var(--panel); }
+
+  /* cards */
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin: 12px 0; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .kvgrid { display: grid; grid-template-columns: 130px 1fr; row-gap: 6px; column-gap: 14px; }
+  .kvgrid .k { color: var(--muted); }
+  .kvgrid .v { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
+
+  .pill { display: inline-block; padding: 1px 6px; border-radius: 99px; font-size: 11px; }
+  .pill.ok { background: rgba(63,185,80,0.18); color: var(--ok); }
+  .pill.warn { background: rgba(240,136,62,0.18); color: var(--warm); }
+  .pill.muted { background: rgba(139,148,158,0.18); color: var(--muted); }
+
+  .preview { color: var(--fg); font-family: ui-monospace, monospace; font-size: 12px; max-width: 700px; }
+  .preview .label { color: var(--muted); margin-right: 6px; }
+
+  .flash { padding: 10px 14px; border-radius: 5px; margin-bottom: 14px; background: rgba(248,81,73,0.12); color: var(--err); border: 1px solid rgba(248,81,73,0.4); }
+
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+</style>
+</head>
+<body>
+  {{ template "sidebar" . }}
+  <main>
+    {{ if .Flash }}<div class="flash">{{ .Flash }}</div>{{ end }}
+    {{ template "content" . }}
+  </main>
+</body>
+</html>
+{{ end }}
+
+{{ define "sidebar" }}
+<aside>
+  <h1>EPICS</h1>
+  {{ range .Epics }}
+    <div class="epic-group">
+      <a class="epic-name {{ if eq $.ActiveEpicSlug .Slug }}active{{ end }}" href="/epics/{{ .Slug }}">
+        <span>{{ .Name }}</span>
+      </a>
+      <div class="ws-list">
+        {{ range .Workspaces }}
+          <a class="ws-item {{ if and (eq $.ActiveEpicSlug .EpicSlug) (eq $.ActiveWorkspaceSlug .Slug) }}active{{ end }}"
+             href="/epics/{{ .EpicSlug }}/workspaces/{{ .Slug }}">
+            <div>{{ .Name }} <span class="meta">· {{ .NumSessions }}s</span></div>
+            <div class="branch">{{ .BranchName }}</div>
+          </a>
+        {{ end }}
+        <a class="add-link" href="/epics/{{ .Slug }}/workspaces/new">+ New workspace</a>
+      </div>
+    </div>
+  {{ end }}
+  <a class="add-link" href="/epics/new" style="margin-top:12px;">+ New epic</a>
+  <footer>
+    <a href="/sessions">all sessions →</a><br>
+    indexed {{ .IndexedAt }}
+  </footer>
+</aside>
+{{ end }}

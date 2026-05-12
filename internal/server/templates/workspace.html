@@ -1,0 +1,59 @@
+{{ define "content" }}
+<header>
+  <div class="crumb"><a href="/">home</a> / <a href="/epics/{{ .Epic.Slug }}">{{ .Epic.Name }}</a> / workspace</div>
+  <h2>{{ .Workspace.Name }}</h2>
+</header>
+
+<div class="card">
+  <h3>Workspace</h3>
+  <div class="kvgrid">
+    <div class="k">Branch</div><div class="v" style="color:var(--warm);">{{ .Workspace.BranchName }}</div>
+    <div class="k">Worktree</div><div class="v">{{ .Workspace.WorktreePath }}</div>
+    <div class="k">Created</div><div class="v">{{ .CreatedAgo }}</div>
+    <div class="k">PR</div>
+    <div class="v">
+      {{ if .Workspace.PRURL }}<a href="{{ .Workspace.PRURL }}" target="_blank">{{ .Workspace.PRURL }}</a>{{ else }}<span class="pill muted">none yet</span>{{ end }}
+    </div>
+  </div>
+  <div class="actions">
+    <form method="POST" action="/epics/{{ .Epic.Slug }}/workspaces/{{ .Workspace.Slug }}/launch" style="display:inline;">
+      <button type="submit">Launch claude here</button>
+    </form>
+    <form method="POST" action="/epics/{{ .Epic.Slug }}/workspaces/{{ .Workspace.Slug }}/pr" style="display:flex; gap:8px; align-items:center;">
+      <input type="url" name="pr_url" placeholder="https://github.com/.../pull/123" value="{{ .Workspace.PRURL }}" style="width:380px;">
+      <button class="ghost" type="submit">Save PR URL</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Sessions ({{ len .Sessions }})</h3>
+  {{ if .Sessions }}
+  <table class="list">
+    <thead><tr><th>When</th><th>Session</th><th>Last messages</th><th>Events</th></tr></thead>
+    <tbody>
+    {{ range .Sessions }}
+      <tr>
+        <td>{{ .Ago }}</td>
+        <td class="mono">{{ .ShortID }}</td>
+        <td class="preview">
+          {{ if .LastUserPreview }}<div><span class="label">→</span>{{ .LastUserPreview }}</div>{{ end }}
+          {{ if .LastAssistantText }}<div><span class="label">←</span>{{ .LastAssistantText }}</div>{{ end }}
+        </td>
+        <td>{{ .NumEvents }}</td>
+      </tr>
+    {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <p style="color:var(--muted);">No sessions yet — click "Launch claude here" to start one.</p>
+  {{ end }}
+</div>
+
+{{ if .Epic.ContextMD }}
+<div class="card">
+  <h3>Epic context</h3>
+  <pre style="white-space:pre-wrap; font-family:ui-monospace,monospace; font-size:12px; color:var(--fg);">{{ .Epic.ContextMD }}</pre>
+</div>
+{{ end }}
+{{ end }}

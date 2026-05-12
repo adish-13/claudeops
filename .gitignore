@@ -1,0 +1,4 @@
+claudeops
+*.db
+*.db-wal
+*.db-shm

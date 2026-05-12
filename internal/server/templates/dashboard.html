@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>claudeops — sessions</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --warm: #f0883e;
+    --ok: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 12px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+  }
+  tr:hover td { background: #11161d; }
+  .project { color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+  .branch { color: var(--warm); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+  .when { color: var(--muted); white-space: nowrap; }
+  .when.fresh { color: var(--ok); }
+  .preview { color: var(--fg); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; max-width: 520px; }
+  .preview .label { color: var(--muted); margin-right: 6px; }
+  .num { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; }
+  .empty { padding: 60px; text-align: center; color: var(--muted); }
+  footer { padding: 12px 20px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>claudeops</h1>
+    <span class="meta">{{ len .Sessions }} sessions across {{ .ProjectCount }} projects · indexed {{ .IndexedAt }}</span>
+  </header>
+  {{ if .Sessions }}
+  <table>
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Project</th>
+        <th>Branch</th>
+        <th>Last messages</th>
+        <th class="num">Events</th>
+        <th>Session</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range .Sessions }}
+      <tr>
+        <td class="when {{ if .Fresh }}fresh{{ end }}">{{ .Ago }}</td>
+        <td class="project">{{ .CwdShort }}</td>
+        <td class="branch">{{ .GitBranch }}</td>
+        <td class="preview">
+          {{ if .LastUserPreview }}<div><span class="label">→</span>{{ .LastUserPreview }}</div>{{ end }}
+          {{ if .LastAssistantText }}<div><span class="label">←</span>{{ .LastAssistantText }}</div>{{ end }}
+        </td>
+        <td class="num">{{ .NumEvents }}</td>
+        <td class="id">{{ .ShortID }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+  {{ else }}
+  <div class="empty">No sessions indexed yet. Make sure ~/.claude/projects exists.</div>
+  {{ end }}
+  <footer>auto-refreshes every 5s · <a href="/" style="color:var(--accent)">reload</a></footer>
+  <script>setTimeout(() => location.reload(), 5000);</script>
+</body>
+</html>
