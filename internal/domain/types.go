@@ -24,6 +24,7 @@ type Workspace struct {
 	BranchName   string
 	WorktreePath string
 	PRURL        string
+	NotesMD      string
 	CreatedAt    time.Time
 	ArchivedAt   *time.Time
 }

@@ -20,6 +20,7 @@ export type Workspace = {
   branch_name: string;
   worktree_path: string;
   pr_url: string;
+  notes_md: string;
   created_at: string;
 };
 
@@ -158,6 +159,12 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pr_url }),
+    }).then(jsonOr<{ ok: true }>),
+  workspaceSaveNotes: (epicSlug: string, wsSlug: string, notes_md: string) =>
+    fetch(`${API}/epics/${epicSlug}/workspaces/${wsSlug}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes_md }),
     }).then(jsonOr<{ ok: true }>),
   workspaceArchive: (epicSlug: string, wsSlug: string) =>
     fetch(`${API}/epics/${epicSlug}/workspaces/${wsSlug}/archive`, { method: "POST" }).then(

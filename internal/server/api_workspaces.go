@@ -22,6 +22,7 @@ type workspaceJSON struct {
 	BranchName   string `json:"branch_name"`
 	WorktreePath string `json:"worktree_path"`
 	PRURL        string `json:"pr_url"`
+	NotesMD      string `json:"notes_md"`
 	CreatedAt    string `json:"created_at"`
 }
 
@@ -39,6 +40,7 @@ func toWorkspaceJSON(w domain.Workspace) workspaceJSON {
 	return workspaceJSON{
 		ID: w.ID, EpicID: w.EpicID, Slug: w.Slug, Name: w.Name,
 		BranchName: w.BranchName, WorktreePath: w.WorktreePath, PRURL: w.PRURL,
+		NotesMD:   w.NotesMD,
 		CreatedAt: w.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
@@ -147,6 +149,28 @@ func (srv *Server) apiLaunchITerm(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := launcher.LaunchClaude(ws.WorktreePath, ""); err != nil {
 		writeErr(w, 500, "launch failed: "+err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+func (srv *Server) apiSaveNotes(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	wsslug := r.PathValue("wsslug")
+	ws, _, err := srv.store.GetWorkspaceBySlug(r.Context(), slug, wsslug)
+	if err != nil {
+		writeErr(w, 404, "workspace not found")
+		return
+	}
+	var body struct {
+		NotesMD string `json:"notes_md"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	if err := srv.store.UpdateWorkspaceNotes(r.Context(), ws.ID, body.NotesMD); err != nil {
+		writeErr(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]bool{"ok": true})

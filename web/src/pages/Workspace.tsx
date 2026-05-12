@@ -1,8 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import useSWR, { mutate } from "swr";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, DiffStat } from "@/lib/api";
-import { Button, Card, CardTitle, Input, KV, KVGrid, PageHeader, Pill } from "@/components/ui";
+import { Button, Card, CardTitle, Input, KV, KVGrid, PageHeader, Pill, Textarea } from "@/components/ui";
 import { Terminal } from "@/components/Terminal";
 import { humanAgo } from "@/lib/utils";
 import { ExternalLink, Play, RotateCcw, Square, GitBranch as GitBranchIcon, Folder } from "lucide-react";
@@ -94,6 +94,14 @@ export function WorkspacePage() {
                 }} />
               </div>
             </Card>
+
+            <NotesCard
+              initial={workspace.notes_md}
+              onSave={async (md) => {
+                await api.workspaceSaveNotes(slug!, wsslug!, md);
+                mutate(key);
+              }}
+            />
 
             <Card>
               <CardTitle>Sessions ({sessions.length})</CardTitle>
@@ -192,6 +200,49 @@ function FileList({ files }: { files: DiffStat[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// NotesCard owns its own draft state + dirty bit so the textarea isn't
+// re-rendered (and the cursor reset) by the SWR refresh that runs every 5s.
+function NotesCard({ initial, onSave }: { initial: string; onSave: (md: string) => Promise<void> }) {
+  const [draft, setDraft] = useState(initial);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // If the upstream initial value changes while the user hasn't edited,
+  // sync to it; if they're mid-edit, leave their draft alone.
+  useEffect(() => {
+    if (!dirty) setDraft(initial);
+  }, [initial, dirty]);
+  return (
+    <Card>
+      <CardTitle>Notes</CardTitle>
+      <p className="text-muted text-[12px] mb-2">
+        Decisions, open questions, links — markdown. Persists with the workspace.
+      </p>
+      <Textarea
+        value={draft}
+        onChange={(e) => { setDraft(e.target.value); setDirty(true); }}
+        placeholder={"e.g.\n- Picked option B over A because A blocks on stacked-PR rework\n- TODO: race condition in pollPR — see #14 review thread\n- Decided to defer migration v2 to next sprint"}
+      />
+      <div className="mt-3 flex items-center gap-2">
+        <Button
+          disabled={!dirty || saving}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await onSave(draft);
+              setDirty(false);
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          {saving ? "Saving…" : "Save notes"}
+        </Button>
+        {dirty && <span className="text-muted text-[11px]">unsaved changes</span>}
+      </div>
+    </Card>
   );
 }
 

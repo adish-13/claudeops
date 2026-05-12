@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
     branch_name   TEXT NOT NULL,
     worktree_path TEXT NOT NULL UNIQUE,
     pr_url        TEXT NOT NULL DEFAULT '',
+    notes_md      TEXT NOT NULL DEFAULT '',
     created_at    INTEGER NOT NULL,
     archived_at   INTEGER,
     UNIQUE(epic_id, slug)
@@ -70,6 +71,7 @@ func Open(path string) (*Store, error) {
 	}
 	// Lazy ALTER for upgrades from older schemas — safe to ignore "duplicate column" errors.
 	_, _ = db.Exec(`ALTER TABLE sessions ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE SET NULL`)
+	_, _ = db.Exec(`ALTER TABLE workspaces ADD COLUMN notes_md TEXT NOT NULL DEFAULT ''`)
 	return &Store{db: db, path: path}, nil
 }
 

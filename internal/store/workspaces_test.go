@@ -38,6 +38,21 @@ func TestGetWorkspaceBySlug(t *testing.T) {
 	}
 }
 
+func TestUpdateWorkspaceNotes(t *testing.T) {
+	s := storetest.New(t)
+	ctx := context.Background()
+	epicID := storetest.SeedEpic(t, s, "ep", "/tmp/r")
+	wsID := storetest.SeedWorkspace(t, s, epicID, "ws", "branch", "/tmp/wt")
+
+	if err := s.UpdateWorkspaceNotes(ctx, wsID, "decided X over Y"); err != nil {
+		t.Fatalf("update notes: %v", err)
+	}
+	w, _, _ := s.GetWorkspaceBySlug(ctx, "ep", "ws")
+	if w.NotesMD != "decided X over Y" {
+		t.Fatalf("notes not saved: %q", w.NotesMD)
+	}
+}
+
 func TestUpdateWorkspacePR(t *testing.T) {
 	s := storetest.New(t)
 	ctx := context.Background()

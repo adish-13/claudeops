@@ -25,6 +25,11 @@ func (s *Store) UpdateWorkspacePR(ctx context.Context, id int64, prURL string) e
 	return err
 }
 
+func (s *Store) UpdateWorkspaceNotes(ctx context.Context, id int64, notesMD string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE workspaces SET notes_md = ? WHERE id = ?`, notesMD, id)
+	return err
+}
+
 func (s *Store) ArchiveWorkspace(ctx context.Context, id int64) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE workspaces SET archived_at = ? WHERE id = ?`, time.Now().UnixMilli(), id)
 	return err
@@ -32,7 +37,7 @@ func (s *Store) ArchiveWorkspace(ctx context.Context, id int64) error {
 
 func (s *Store) ListWorkspacesByEpic(ctx context.Context, epicID int64) ([]domain.Workspace, error) {
 	rows, err := s.db.QueryContext(ctx, `
-        SELECT id, epic_id, slug, name, branch_name, worktree_path, pr_url, created_at, archived_at
+        SELECT id, epic_id, slug, name, branch_name, worktree_path, pr_url, notes_md, created_at, archived_at
         FROM workspaces WHERE epic_id = ? AND archived_at IS NULL
         ORDER BY created_at DESC`, epicID)
 	if err != nil {
@@ -53,7 +58,7 @@ func (s *Store) ListWorkspacesByEpic(ctx context.Context, epicID int64) ([]domai
 // AllWorkspaces returns every active workspace; used by the indexer for cwd binding.
 func (s *Store) AllWorkspaces(ctx context.Context) ([]domain.Workspace, error) {
 	rows, err := s.db.QueryContext(ctx, `
-        SELECT id, epic_id, slug, name, branch_name, worktree_path, pr_url, created_at, archived_at
+        SELECT id, epic_id, slug, name, branch_name, worktree_path, pr_url, notes_md, created_at, archived_at
         FROM workspaces WHERE archived_at IS NULL`)
 	if err != nil {
 		return nil, err
@@ -76,7 +81,7 @@ func (s *Store) GetWorkspaceBySlug(ctx context.Context, epicSlug, wsSlug string)
 		return nil, nil, err
 	}
 	row := s.db.QueryRowContext(ctx, `
-        SELECT id, epic_id, slug, name, branch_name, worktree_path, pr_url, created_at, archived_at
+        SELECT id, epic_id, slug, name, branch_name, worktree_path, pr_url, notes_md, created_at, archived_at
         FROM workspaces WHERE epic_id = ? AND slug = ?`, epic.ID, wsSlug)
 	w, err := scanWorkspace(row)
 	if err != nil {
@@ -92,7 +97,7 @@ func scanWorkspace(r rowScanner) (domain.Workspace, error) {
 	var w domain.Workspace
 	var createdMs int64
 	var archivedMs sql.NullInt64
-	if err := r.Scan(&w.ID, &w.EpicID, &w.Slug, &w.Name, &w.BranchName, &w.WorktreePath, &w.PRURL, &createdMs, &archivedMs); err != nil {
+	if err := r.Scan(&w.ID, &w.EpicID, &w.Slug, &w.Name, &w.BranchName, &w.WorktreePath, &w.PRURL, &w.NotesMD, &createdMs, &archivedMs); err != nil {
 		return w, err
 	}
 	w.CreatedAt = time.UnixMilli(createdMs)

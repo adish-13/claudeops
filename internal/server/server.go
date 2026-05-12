@@ -54,6 +54,7 @@ func (srv *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/epics/{slug}/workspaces/{wsslug}", srv.apiGetWorkspace)
 	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/launch", srv.apiLaunchITerm)
 	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/pr", srv.apiSavePR)
+	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/notes", srv.apiSaveNotes)
 	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/archive", srv.apiArchiveWorkspace)
 	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/term/start", srv.apiTermStart)
 	mux.HandleFunc("POST /api/epics/{slug}/workspaces/{wsslug}/term/kill", srv.apiTermKill)
