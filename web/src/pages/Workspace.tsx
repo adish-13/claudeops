@@ -70,7 +70,7 @@ export function WorkspacePage() {
         </header>
 
         {terminal_live ? (
-          <div className="flex-1 min-h-0 bg-black p-2">
+          <div className="flex-1 min-h-0 min-w-0 bg-black overflow-hidden">
             <Terminal workspaceId={workspace.id} />
           </div>
         ) : (

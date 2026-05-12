@@ -60,6 +60,10 @@ func (m *Manager) Spawn(workspaceID int64, worktreePath string, extraArgs ...str
 	if err != nil {
 		return nil, fmt.Errorf("pty start: %w", err)
 	}
+	// Default to a generous viewport so the first frames Claude renders into
+	// the backlog (before the browser sends its real size) don't get wrapped
+	// at 80x24 and look truncated when the user attaches.
+	_ = pty.Setsize(pf, &pty.Winsize{Rows: 50, Cols: 200})
 	s := &Session{
 		workspaceID: workspaceID,
 		cmd:         cmd,
