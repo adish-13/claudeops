@@ -1,0 +1,41 @@
+# Dependabot configuration for claudeops.
+# - Watches Go modules, npm, and GitHub Actions for outdated versions
+# - Groups minor + patch updates together so we get one PR per ecosystem per
+#   week rather than a flood; major bumps still get individual PRs because
+#   they tend to need real code changes
+# - Caps concurrent open PRs so this doesn't drown the review queue
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "go"]
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: "/web"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "javascript"]
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels: ["dependencies", "ci"]
