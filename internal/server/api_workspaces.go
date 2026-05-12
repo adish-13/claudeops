@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -49,6 +50,13 @@ func (srv *Server) apiGetWorkspace(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, 404, "workspace not found")
 		return
+	}
+	// Lazy PR detection: if no PR is linked yet, kick off a background lookup.
+	// We don't block the response; the SWR poll on the workspace page will pick
+	// the URL up on the next refresh (~5s). Once stored, we never re-check —
+	// FindPR is gated behind `ws.PRURL == ""` here and at term-kill time.
+	if ws.PRURL == "" {
+		srv.detectPRAsync(*ws)
 	}
 	sessions, _ := srv.store.ListSessionsByWorkspace(r.Context(), ws.ID)
 	rows := make([]sessionJSON, 0, len(sessions))
@@ -216,5 +224,27 @@ func (srv *Server) apiTermKill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	srv.terminals.Kill(ws.ID)
+	// Stopping the embedded session is the natural moment a `gh pr create` or
+	// `arc diff` would have just run. Re-detect right after, so the right pane
+	// shows the new PR by the time the user looks back at the page.
+	if ws.PRURL == "" {
+		srv.detectPRAsync(*ws)
+	}
 	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+// detectPRAsync runs `gh pr list --head <branch>` in the background and
+// writes the URL to the store if one is found. It's a no-op if `gh` isn't
+// installed, the branch hasn't been pushed, or no PR exists yet.
+//
+// We use context.Background() rather than the request context so the lookup
+// survives a fast browser refresh that would otherwise cancel mid-flight.
+func (srv *Server) detectPRAsync(w domain.Workspace) {
+	go func() {
+		url, err := git.FindPR(w.WorktreePath, w.BranchName)
+		if err != nil || url == "" {
+			return
+		}
+		_ = srv.store.UpdateWorkspacePR(context.Background(), w.ID, url)
+	}()
 }

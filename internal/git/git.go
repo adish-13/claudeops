@@ -3,6 +3,7 @@
 package git
 
 import (
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -10,6 +11,10 @@ import (
 
 	"claudeops/internal/domain"
 )
+
+// jsonUnmarshal is aliased so the FindPR function can stay near the top of
+// the file without an inline import.
+var jsonUnmarshal = json.Unmarshal
 
 // Summary returns aggregate added/removed line counts for worktreePath
 // against baseBranch, treating uncommitted changes as part of the diff.
@@ -125,6 +130,52 @@ func mergeStats(a, b []domain.DiffStat) []domain.DiffStat {
 		out = append(out, *idx[p])
 	}
 	return out
+}
+
+// FindPR returns the URL of a pull request whose source branch matches
+// `branch` in the repo at worktreePath. Returns ("", nil) if:
+//   - the `gh` CLI isn't installed,
+//   - the user isn't authenticated,
+//   - no PR exists for that branch.
+//
+// When multiple PRs exist for the branch, an OPEN one is preferred; otherwise
+// the most recently created PR wins. This matches how a developer would
+// naturally interpret "the PR for this branch."
+func FindPR(worktreePath, branch string) (string, error) {
+	if branch == "" || worktreePath == "" {
+		return "", nil
+	}
+	if _, err := exec.LookPath("gh"); err != nil {
+		return "", nil // gh not installed — silently skip
+	}
+	cmd := exec.Command("gh", "pr", "list",
+		"--head", branch,
+		"--json", "url,state,createdAt",
+		"--state", "all",
+		"--limit", "20",
+	)
+	cmd.Dir = worktreePath
+	out, err := cmd.Output()
+	if err != nil {
+		// Either no remote, no auth, or branch not pushed yet — all benign.
+		return "", nil
+	}
+	type prRow struct {
+		URL       string `json:"url"`
+		State     string `json:"state"`
+		CreatedAt string `json:"createdAt"`
+	}
+	var rows []prRow
+	if err := jsonUnmarshal(out, &rows); err != nil || len(rows) == 0 {
+		return "", nil
+	}
+	// Prefer OPEN; otherwise pick the latest by createdAt (already sorted desc by gh).
+	for _, p := range rows {
+		if strings.EqualFold(p.State, "OPEN") {
+			return p.URL, nil
+		}
+	}
+	return rows[0].URL, nil
 }
 
 func runGit(dir string, args ...string) (string, error) {
