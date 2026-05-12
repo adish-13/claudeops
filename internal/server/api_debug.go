@@ -8,13 +8,13 @@ import (
 )
 
 type debugJSON struct {
-	DBPath           string                   `json:"db_path"`
-	DBSizeBytes      int64                    `json:"db_size_bytes"`
-	WALSizeBytes     int64                    `json:"wal_size_bytes"`
-	Counts           map[string]int           `json:"counts"`
-	RecentEpics      []map[string]any         `json:"recent_epics"`
-	RecentWorkspaces []map[string]any         `json:"recent_workspaces"`
-	RecentSessions   []map[string]any         `json:"recent_sessions"`
+	DBPath           string           `json:"db_path"`
+	DBSizeBytes      int64            `json:"db_size_bytes"`
+	WALSizeBytes     int64            `json:"wal_size_bytes"`
+	Counts           map[string]int   `json:"counts"`
+	RecentEpics      []map[string]any `json:"recent_epics"`
+	RecentWorkspaces []map[string]any `json:"recent_workspaces"`
+	RecentSessions   []map[string]any `json:"recent_sessions"`
 }
 
 func (srv *Server) apiDebug(w http.ResponseWriter, r *http.Request) {

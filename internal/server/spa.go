@@ -30,17 +30,30 @@ func (srv *Server) spaHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		// Try to serve a real file; if missing, fall through to index.html.
 		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
-		}
-		if _, err := fs.Stat(sub, path); err != nil {
-			r2 := r.Clone(r.Context())
-			r2.URL.Path = "/index.html"
-			files.ServeHTTP(w, r2)
+		// Serve index.html bytes directly for "/" and any unknown path so
+		// (a) http.FileServer doesn't bounce /index.html → / (redirect loop)
+		// and (b) client-side routes work on hard-refresh.
+		if path == "" || statMissing(sub, path) {
+			serveIndex(w, sub)
 			return
 		}
 		files.ServeHTTP(w, r)
 	})
+}
+
+func statMissing(sub fs.FS, path string) bool {
+	_, err := fs.Stat(sub, path)
+	return err != nil
+}
+
+func serveIndex(w http.ResponseWriter, sub fs.FS) {
+	body, err := fs.ReadFile(sub, "index.html")
+	if err != nil {
+		http.Error(w, "web/dist/index.html missing — run `make web`", 500)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(body)
 }

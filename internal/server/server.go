@@ -32,7 +32,9 @@ func New(s *store.Store, tm *terminals.Manager, worktreeRoot string) *Server {
 	return &Server{store: s, terminals: tm, home: home, worktreeRoot: worktreeRoot}
 }
 
-func (srv *Server) ListenAndServe(addr string) error {
+// Handler returns the fully-configured HTTP mux. ListenAndServe wraps this;
+// tests use it directly with httptest.
+func (srv *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	// JSON API
@@ -62,7 +64,11 @@ func (srv *Server) ListenAndServe(addr string) error {
 	// SPA — must be last; matches everything else.
 	mux.Handle("/", srv.spaHandler())
 
-	return http.ListenAndServe(addr, mux)
+	return mux
+}
+
+func (srv *Server) ListenAndServe(addr string) error {
+	return http.ListenAndServe(addr, srv.Handler())
 }
 
 // ---------- JSON helpers ----------

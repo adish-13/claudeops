@@ -16,7 +16,9 @@ var upgrader = websocket.Upgrader{
 // handleTerminalWS bridges the workspace's pty to the browser via xterm.js.
 //
 // Frame protocol (text frames from client):
-//   {"type":"input","data":"..."} or {"type":"resize","rows":N,"cols":M}
+//
+//	{"type":"input","data":"..."} or {"type":"resize","rows":N,"cols":M}
+//
 // Server → client: raw byte chunks from the pty.
 func (srv *Server) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	wsidStr := r.PathValue("wsid")

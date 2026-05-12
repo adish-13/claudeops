@@ -21,18 +21,18 @@ type epicJSON struct {
 }
 
 type sessionJSON struct {
-	SessionID         string  `json:"session_id"`
-	ProjectDir        string  `json:"project_dir"`
-	Cwd               string  `json:"cwd"`
-	GitBranch         string  `json:"git_branch"`
-	Model             string  `json:"model"`
-	LastActivity      string  `json:"last_activity"`
-	LastUserPreview   string  `json:"last_user_preview"`
-	LastAssistantText string  `json:"last_assistant_text"`
-	NumEvents         int64   `json:"num_events"`
-	WorkspaceID       *int64  `json:"workspace_id"`
-	WorkspaceLink     string  `json:"workspace_link,omitempty"`
-	WorkspaceLabel    string  `json:"workspace_label,omitempty"`
+	SessionID         string `json:"session_id"`
+	ProjectDir        string `json:"project_dir"`
+	Cwd               string `json:"cwd"`
+	GitBranch         string `json:"git_branch"`
+	Model             string `json:"model"`
+	LastActivity      string `json:"last_activity"`
+	LastUserPreview   string `json:"last_user_preview"`
+	LastAssistantText string `json:"last_assistant_text"`
+	NumEvents         int64  `json:"num_events"`
+	WorkspaceID       *int64 `json:"workspace_id"`
+	WorkspaceLink     string `json:"workspace_link,omitempty"`
+	WorkspaceLabel    string `json:"workspace_label,omitempty"`
 }
 
 type epicWorkspaceJSON struct {

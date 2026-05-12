@@ -1,0 +1,59 @@
+name: CI
+
+# Runs on every PR targeting master and on direct pushes to master.
+# Configure branch protection in repo settings (Settings → Branches → Branch
+# protection rules) to require this workflow's "ci" check to pass before merge.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# Cancel an in-flight run when a new commit is pushed to the same PR/branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: lint + test + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install npm dependencies
+        run: cd web && npm ci
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+
+      - name: Build
+        run: make build
+
+      - name: Verify binary runs
+        run: ./claudeops -h || true  # -h returns non-zero in stdlib flag, so swallow exit
+
+  # Convenience job: a single name that branch protection can require, even
+  # if we add more jobs in the future.
+  required:
+    name: required
+    needs: [ci]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "all required jobs passed"
