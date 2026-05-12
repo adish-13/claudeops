@@ -363,7 +363,7 @@ func (srv *Server) handleCreateEpic(w http.ResponseWriter, r *http.Request) {
 		Slug:        slugify(r.FormValue("slug")),
 		Name:        strings.TrimSpace(r.FormValue("name")),
 		Description: strings.TrimSpace(r.FormValue("description")),
-		RepoPath:    strings.TrimSpace(r.FormValue("repo_path")),
+		RepoPath:    srv.expandHome(strings.TrimSpace(r.FormValue("repo_path"))),
 		BaseBranch:  strings.TrimSpace(r.FormValue("base_branch")),
 		ContextMD:   r.FormValue("context_md"),
 	}
@@ -374,8 +374,8 @@ func (srv *Server) handleCreateEpic(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name, slug, and repo_path are required", 400)
 		return
 	}
-	if _, err := os.Stat(e.RepoPath); err != nil {
-		http.Error(w, "repo path does not exist: "+e.RepoPath, 400)
+	if err := worktree.IsGitRepo(e.RepoPath); err != nil {
+		http.Error(w, err.Error()+" — run `git init` in that directory first, or pick a different path", 400)
 		return
 	}
 	if _, err := srv.store.CreateEpic(r.Context(), e); err != nil {
@@ -443,7 +443,7 @@ func (srv *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request)
 	}
 	wsSlug := slugify(r.FormValue("slug"))
 	branch := strings.TrimSpace(r.FormValue("branch_name"))
-	wtPath := strings.TrimSpace(r.FormValue("worktree_path"))
+	wtPath := srv.expandHome(strings.TrimSpace(r.FormValue("worktree_path")))
 	name := strings.TrimSpace(r.FormValue("name"))
 	if wsSlug == "" || branch == "" || wtPath == "" || name == "" {
 		http.Error(w, "name, slug, branch_name, worktree_path are required", 400)
@@ -518,6 +518,21 @@ func (srv *Server) workspaceIndex(ctx context.Context) map[int64]wsLookup {
 		}
 	}
 	return out
+}
+
+// expandHome turns "~" or "~/foo" into an absolute path under the user's home dir.
+// Leaves any other path unchanged.
+func (srv *Server) expandHome(p string) string {
+	if p == "" || srv.home == "" {
+		return p
+	}
+	if p == "~" {
+		return srv.home
+	}
+	if strings.HasPrefix(p, "~/") {
+		return filepath.Join(srv.home, p[2:])
+	}
+	return p
 }
 
 func (srv *Server) shortenPath(cwd, projectDir string) string {
