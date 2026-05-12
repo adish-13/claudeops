@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"claudeops/internal/domain"
 	"claudeops/internal/store"
 )
 
@@ -126,7 +127,7 @@ type wsItem struct {
 	prefix string
 }
 
-func buildWorkspaceMatcher(ws []store.Workspace) *wsMatcher {
+func buildWorkspaceMatcher(ws []domain.Workspace) *wsMatcher {
 	m := &wsMatcher{}
 	for _, w := range ws {
 		p := strings.TrimRight(w.WorktreePath, "/") + "/"
@@ -152,8 +153,8 @@ func (m *wsMatcher) match(cwd string) int64 {
 	return bestID
 }
 
-func parseFile(path, projectDir string) (store.Session, error) {
-	var sess store.Session
+func parseFile(path, projectDir string) (domain.Session, error) {
+	var sess domain.Session
 	info, err := os.Stat(path)
 	if err != nil {
 		return sess, err
@@ -193,7 +194,7 @@ func parseFile(path, projectDir string) (store.Session, error) {
 	return sess, nil
 }
 
-func applyHeader(s *store.Session, line []byte) {
+func applyHeader(s *domain.Session, line []byte) {
 	var ev event
 	if err := json.Unmarshal(line, &ev); err != nil {
 		return
@@ -215,7 +216,7 @@ func applyHeader(s *store.Session, line []byte) {
 	}
 }
 
-func applyTail(s *store.Session, lines [][]byte) {
+func applyTail(s *domain.Session, lines [][]byte) {
 	for i := len(lines) - 1; i >= 0; i-- {
 		var ev event
 		if err := json.Unmarshal(lines[i], &ev); err != nil {

@@ -1,0 +1,23 @@
+{{ define "main" }}
+<main class="scroll">
+  <header>
+    <div class="crumb"><a href="/">home</a> / new epic</div>
+    <h2>New epic</h2>
+  </header>
+  <form method="POST" action="/epics" class="card" style="max-width: 640px;">
+    <label>Name</label>
+    <input type="text" name="name" placeholder="postgres recovery" required>
+    <label>Slug (lowercase, dashes — used in URLs and branches)</label>
+    <input type="text" name="slug" placeholder="postgres-recovery" required>
+    <label>Description (optional)</label>
+    <input type="text" name="description" placeholder="One-line summary">
+    <label>Repo path (absolute, ~ ok)</label>
+    <input type="text" name="repo_path" placeholder="~/repos/myrepo" required>
+    <label>Base branch</label>
+    <input type="text" name="base_branch" value="master" required>
+    <label>Initial context (markdown)</label>
+    <textarea name="context_md" placeholder="Spec, links, decisions — anything you want every workspace under this epic to inherit."></textarea>
+    <div class="actions" style="margin-top: 14px;"><button type="submit">Create epic</button></div>
+  </form>
+</main>
+{{ end }}

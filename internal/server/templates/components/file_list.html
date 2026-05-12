@@ -1,0 +1,16 @@
+{{ define "file_list" }}
+{{ if .Files }}
+  {{ range .Files }}
+  <div class="file-row">
+    <span class="file-status">{{ .Status }}</span>
+    <span class="path" title="{{ .Path }}">{{ .Path }}</span>
+    <span class="stats">
+      {{ if .Added }}<span class="stat-add">+{{ .Added }}</span>{{ end }}
+      {{ if .Removed }}<span class="stat-del">-{{ .Removed }}</span>{{ end }}
+    </span>
+  </div>
+  {{ end }}
+{{ else }}
+  <div style="color: var(--muted); font-size: 12px; padding: 4px;">No changes</div>
+{{ end }}
+{{ end }}
