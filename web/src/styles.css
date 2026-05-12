@@ -24,6 +24,13 @@ body {
   background: transparent !important;
 }
 
+/* Ensure xterm fills its host so FitAddon measures real dimensions
+   instead of collapsing to 0 on first paint. */
+.xterm {
+  height: 100%;
+  width: 100%;
+}
+
 /* Subtle scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
