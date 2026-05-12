@@ -167,10 +167,12 @@ export const api = {
     fetch(`${API}/epics/${epicSlug}/workspaces/${wsSlug}/launch`, { method: "POST" }).then(
       jsonOr<{ ok: true }>
     ),
-  workspaceTermStart: (epicSlug: string, wsSlug: string) =>
-    fetch(`${API}/epics/${epicSlug}/workspaces/${wsSlug}/term/start`, { method: "POST" }).then(
-      jsonOr<{ ok: true }>
-    ),
+  workspaceTermStart: (epicSlug: string, wsSlug: string, sessionId?: string) =>
+    fetch(`${API}/epics/${epicSlug}/workspaces/${wsSlug}/term/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: sessionId ? JSON.stringify({ session_id: sessionId }) : undefined,
+    }).then(jsonOr<{ ok: true }>),
   workspaceTermKill: (epicSlug: string, wsSlug: string) =>
     fetch(`${API}/epics/${epicSlug}/workspaces/${wsSlug}/term/kill`, { method: "POST" }).then(
       jsonOr<{ ok: true }>

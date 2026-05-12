@@ -5,7 +5,7 @@ import { api, DiffStat } from "@/lib/api";
 import { Button, Card, CardTitle, Input, KV, KVGrid, PageHeader, Pill } from "@/components/ui";
 import { Terminal } from "@/components/Terminal";
 import { humanAgo } from "@/lib/utils";
-import { ExternalLink, Play, Square, GitBranch as GitBranchIcon, Folder } from "lucide-react";
+import { ExternalLink, Play, RotateCcw, Square, GitBranch as GitBranchIcon, Folder } from "lucide-react";
 
 export function WorkspacePage() {
   const { slug, wsslug } = useParams<{ slug: string; wsslug: string }>();
@@ -19,8 +19,8 @@ export function WorkspacePage() {
 
   const { workspace, epic, sessions, diff, files, terminal_live, worktree_short } = data;
 
-  async function startTerm() {
-    await api.workspaceTermStart(slug!, wsslug!);
+  async function startTerm(sessionId?: string) {
+    await api.workspaceTermStart(slug!, wsslug!, sessionId);
     mutate(key);
   }
   async function killTerm() {
@@ -56,7 +56,14 @@ export function WorkspacePage() {
                 <Button variant="ghost" onClick={killTerm}><Square size={12} />stop</Button>
               </>
             ) : (
-              <Button onClick={startTerm}><Play size={12} />launch claude</Button>
+              <>
+                <Button onClick={() => startTerm()}><Play size={12} />launch fresh</Button>
+                {sessions.length > 0 && (
+                  <Button variant="ghost" onClick={() => startTerm(sessions[0].session_id)} title={`claude --resume ${sessions[0].session_id.slice(0, 8)}`}>
+                    <RotateCcw size={12} />resume last
+                  </Button>
+                )}
+              </>
             )}
             <Button variant="ghost" onClick={launchITerm}><ExternalLink size={12} />iTerm</Button>
           </div>
@@ -98,6 +105,7 @@ export function WorkspacePage() {
                       <th className="text-left py-2 pr-3 font-medium">Session</th>
                       <th className="text-left py-2 pr-3 font-medium">Last messages</th>
                       <th className="text-left py-2 pr-3 font-medium">Events</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -112,6 +120,17 @@ export function WorkspacePage() {
                           {s.last_assistant_text && <div className="text-fg"><span className="text-muted mr-1.5">←</span>{s.last_assistant_text}</div>}
                         </td>
                         <td className="py-2 pr-3">{s.num_events}</td>
+                        <td className="py-2 pr-3 text-right">
+                          {!terminal_live && (
+                            <button
+                              onClick={() => startTerm(s.session_id)}
+                              className="text-accent text-[11px] hover:underline inline-flex items-center gap-1"
+                              title={`claude --resume ${s.session_id.slice(0, 8)}`}
+                            >
+                              <RotateCcw size={10} />resume
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

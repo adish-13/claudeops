@@ -40,8 +40,10 @@ func (m *Manager) Get(workspaceID int64) *Session {
 }
 
 // Spawn starts a new pty session in worktreePath if none exists; reuses the
-// existing one otherwise. Safe to call repeatedly.
-func (m *Manager) Spawn(workspaceID int64, worktreePath string) (*Session, error) {
+// existing one otherwise. extraArgs are appended after the manager's base args
+// — used e.g. to pass `--resume <session-id>` for resuming prior sessions.
+// Safe to call repeatedly.
+func (m *Manager) Spawn(workspaceID int64, worktreePath string, extraArgs ...string) (*Session, error) {
 	m.mu.Lock()
 	if s, ok := m.byID[workspaceID]; ok && s.Alive() {
 		m.mu.Unlock()
@@ -49,7 +51,9 @@ func (m *Manager) Spawn(workspaceID int64, worktreePath string) (*Session, error
 	}
 	m.mu.Unlock()
 
-	cmd := exec.Command(m.cmd, m.cmdArgs...)
+	args := append([]string{}, m.cmdArgs...)
+	args = append(args, extraArgs...)
+	cmd := exec.Command(m.cmd, args...)
 	cmd.Dir = worktreePath
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	pf, err := pty.Start(cmd)

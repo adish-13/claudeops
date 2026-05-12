@@ -190,7 +190,17 @@ func (srv *Server) apiTermStart(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 404, "workspace not found")
 		return
 	}
-	if _, err := srv.terminals.Spawn(ws.ID, ws.WorktreePath); err != nil {
+	// Optional body: { "session_id": "..." } — when present, the pty runs
+	// `claude --resume <id>` instead of a fresh `claude`.
+	var body struct {
+		SessionID string `json:"session_id"`
+	}
+	_ = decodeJSON(r, &body) // body is optional; ignore decode errors
+	var extra []string
+	if id := strings.TrimSpace(body.SessionID); id != "" {
+		extra = []string{"--resume", id}
+	}
+	if _, err := srv.terminals.Spawn(ws.ID, ws.WorktreePath, extra...); err != nil {
 		writeErr(w, 500, "spawn failed: "+err.Error())
 		return
 	}
