@@ -13,10 +13,13 @@ import (
 
 // Summary returns aggregate added/removed line counts for worktreePath
 // against baseBranch, treating uncommitted changes as part of the diff.
+//
+// JSON tags are required: this type is returned directly by the HTTP API
+// (see workspaceDetailJSON.Diff) and the React client expects snake_case.
 type Summary struct {
-	FilesChanged int
-	Added        int
-	Removed      int
+	FilesChanged int `json:"files_changed"`
+	Added        int `json:"added"`
+	Removed      int `json:"removed"`
 }
 
 // Diff returns the combined diff (committed-vs-base + uncommitted) summary

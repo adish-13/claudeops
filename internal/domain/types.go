@@ -54,9 +54,12 @@ type Message struct {
 }
 
 // DiffStat is a per-file or aggregated diff summary.
+//
+// JSON tags are required: this type is returned directly by the HTTP API
+// (see workspaceDetailJSON.Files) and the React client expects snake_case.
 type DiffStat struct {
-	Path    string
-	Status  string // "M", "A", "D", "R", "??", etc.
-	Added   int
-	Removed int
+	Path    string `json:"path"`
+	Status  string `json:"status"` // "M", "A", "D", "R", "??", etc.
+	Added   int    `json:"added"`
+	Removed int    `json:"removed"`
 }
