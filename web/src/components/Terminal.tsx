@@ -9,8 +9,13 @@ export function Terminal({ workspaceId }: { workspaceId: number }) {
     if (!hostRef.current) return;
     const host = hostRef.current;
     const term = new Xterm({
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       fontSize: 13,
+      // Pin lineHeight/letterSpacing so xterm's cell math matches what the
+      // browser actually renders — relying on defaults here can leave a tiny
+      // sub-pixel mismatch that compounds into visible row overlap.
+      lineHeight: 1.0,
+      letterSpacing: 0,
       theme: { background: "#000000", foreground: "#e6edf3", cursor: "#58a6ff" },
       cursorBlink: true,
       scrollback: 5000,
@@ -43,6 +48,21 @@ export function Terminal({ workspaceId }: { workspaceId: number }) {
     // Defer the initial fit until layout has settled so the host has a real size.
     const raf = requestAnimationFrame(refit);
 
+    // xterm measures the cell width with whatever font is loaded at construction
+    // time. If `ui-monospace` resolves later than the system fallback, the cached
+    // cell width is wrong and glyphs overlap. Refit once fonts are ready, and
+    // also force a re-render so cached measurements are thrown out.
+    let fontsCancelled = false;
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        if (fontsCancelled) return;
+        try {
+          term.clearTextureAtlas?.();
+        } catch {}
+        refit();
+      });
+    }
+
     const dec = new TextDecoder();
     ws.onmessage = (ev) => {
       const data = ev.data instanceof ArrayBuffer ? dec.decode(new Uint8Array(ev.data)) : ev.data;
@@ -66,6 +86,7 @@ export function Terminal({ workspaceId }: { workspaceId: number }) {
     ro.observe(host);
 
     return () => {
+      fontsCancelled = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
       inputDispose.dispose();
